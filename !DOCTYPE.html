@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Tesis: Juego Adaptativo V3</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #8e44ad;
+            --success: #27ae60;
+            --danger: #c0392b;
+            --warning: #f1c40f;
+            --light: #f4f6f7;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+            width: 90%;
+            max-width: 650px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border-top: 6px solid var(--accent);
+        }
+
+        h1, h2 { color: var(--primary); margin: 0 0 15px 0; }
+        
+        .screen { display: none; animation: fadeIn 0.4s ease-out; }
+        .active { display: block; }
+
+        /* Inputs */
+        input, select {
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 2px solid #bdc3c7;
+            margin: 10px 0;
+            width: 100%;
+            max-width: 300px;
+            outline: none;
+            box-sizing: border-box;
+        }
+        input:focus, select:focus { border-color: var(--accent); }
+
+        /* Buttons */
+        button {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(142, 68, 173, 0.4); }
+        button:active { transform: scale(0.98); }
+
+        /* HUD */
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--light);
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+        .lives { color: var(--danger); font-size: 1.2rem; }
+
+        /* Questions */
+        .question-box {
+            font-size: 1.25rem;
+            font-weight: 500;
+            margin-bottom: 25px;
+            line-height: 1.5;
+            color: #34495e;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .options-grid { display: grid; gap: 12px; }
+
+        .option-btn {
+            background-color: white;
+            color: var(--primary);
+            border: 2px solid #dfe6e9;
+            padding: 15px;
+            text-align: left;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        .option-btn:hover:not(:disabled) { border-color: var(--accent); background-color: #fbf6ff; }
+
+        /* Feedback Styles */
+        .correct { background-color: var(--success) !important; color: white !important; border-color: var(--success) !important; }
+        .wrong { background-color: var(--danger) !important; color: white !important; border-color: var(--danger) !important; }
+
+        /* Ranking Card */
+        .ranking-card {
+            background: #fff;
+            border: 1px solid #eee;
+            padding: 20px;
+            margin-top: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        /* Reinforcement Area */
+        .reinforcement-box {
+            background-color: #fff8e1;
+            border-left: 5px solid var(--warning);
+            color: #795548;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: left;
+            border-radius: 4px;
+            font-size: 0.95rem;
+        }
+        .reinforcement-list { margin: 10px 0 0 0; padding-left: 20px; }
+
+        /* Progress Bar */
+        .progress-track {
+            width: 100%;
+            background-color: #ecf0f1;
+            height: 8px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: var(--success);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="screen-welcome" class="screen active">
+        <h1>🎓 Master Tesis V3</h1>
+        <p>Evaluación Metodológica Adaptativa</p>
+        
+        <input type="text" id="player-name" placeholder="Ingresa tu nombre..." autocomplete="off">
+        
+        <br><br>
+        <label for="difficulty"><strong>Nivel de Dificultad:</strong></label><br>
+        <select id="difficulty">
+            <option value="easy">🟢 Fácil (Conceptos)</option>
+            <option value="medium">🟡 Medio (Aplicación)</option>
+            <option value="hard">🔴 Difícil (Análisis)</option>
+        </select>
+        
+        <p style="font-size: 0.8rem; color: #7f8c8d;">
+            *Modo Difícil otorga x2.5 puntos.
+        </p>
+        
+        <button onclick="startGame()" id="btn-start">Comenzar</button>
+    </div>
+
+    <div id="screen-game" class="screen">
+        <div class="hud">
+            <span id="hud-level">Nivel 1</span>
+            <span class="lives">❤❤❤❤❤ <span id="lives-num" style="display:none">5</span></span>
+            <span class="timer">⏱ <span id="timer">0</span>s</span>
+            <span>Pts: <span id="score">0</span></span>
+        </div>
+        
+        <div class="progress-track">
+            <div id="progress-fill" class="progress-fill"></div>
+        </div>
+
+        <h3 id="level-title" style="color:var(--accent); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; margin-top:0;">Tema</h3>
+        
+        <div id="question-text" class="question-box">Cargando...</div>
+        
+        <div id="options-container" class="options-grid"></div>
+    </div>
+
+    <div id="screen-level-end" class="screen">
+        <h2 style="color:var(--success)">✅ ¡Nivel Completado!</h2>
+        <div class="ranking-card">
+            <p>Tiempo: <strong><span id="end-time"></span>s</strong> | Vidas restantes: <strong><span id="end-lives"></span></strong></p>
+            <hr style="opacity: 0.3;">
+            <h1 id="rank-badge" style="margin: 10px 0; color:var(--accent)">RANGO A</h1>
+            <p id="rank-msg">Muy buen desempeño.</p>
+        </div>
+        <button onclick="nextLevel()">Siguiente Nivel ➡</button>
+    </div>
+
+    <div id="screen-game-over" class="screen">
+        <h1 style="color:var(--danger)">☠ GAME OVER</h1>
+        <p>Se agotaron tus oportunidades.</p>
+        
+        <div id="feedback-area-fail" class="reinforcement-box" style="display:none;">
+            <strong>⚠ TEMAS A REFORZAR:</strong>
+            <ul id="feedback-list-fail" class="reinforcement-list"></ul>
+        </div>
+
+        <p style="margin-top:20px">Puntaje Final: <strong id="final-score"></strong></p>
+        <button onclick="restartGame()">Intentar de Nuevo</button>
+    </div>
+
+    <div id="screen-victory" class="screen">
+        <h1>🎉 ¡TESIS APROBADA!</h1>
+        <p>Has superado todos los niveles metodológicos.</p>
+        
+        <div class="ranking-card">
+            <h2>Puntaje Total: <span id="victory-score" style="color:var(--accent)"></span></h2>
+            <p id="victory-rank-msg"></p>
+        </div>
+
+        <div id="feedback-area-win" class="reinforcement-box" style="display:none;">
+            <strong>📝 Observaciones (Pequeños errores):</strong>
+            <ul id="feedback-list-win" class="reinforcement-list"></ul>
+        </div>
+
+        <button onclick="restartGame()">Volver a Jugar</button>
+    </div>
+</div>
+
+<script>
+    // ---------------------------------------------------------
+    // BANCO DE PREGUNTAS (Verificado sin errores de sintaxis)
+    // ---------------------------------------------------------
+    const gameData = [
+        {
+            topic: "Variables: Dependiente e Independiente",
+            questions: {
+                easy: [
+                    { q: "¿Qué variable representa la 'Causa'?", options: ["Dependiente", "Independiente", "Extraña", "Nula"], correct: 1 },
+                    { q: "En 'Efecto del sol en plantas', la planta es la variable:", options: ["Independiente", "Dependiente", "Constante", "Ninguna"], correct: 1 },
+                    { q: "La variable que se mide u observa es la:", options: ["Independiente", "Dependiente", "Interviniente", "Aleatoria"], correct: 1 }
+                ],
+                medium: [
+                    { q: "Si estudias 'Estrés y Rendimiento', el Estrés es:", options: ["V. Dependiente", "V. Independiente", "Constante", "Muestra"], correct: 1 },
+                    { q: "¿Cómo se llama la variable que 'estorba' o altera los resultados?", options: ["Interviniente / Extraña", "Independiente", "Dependiente", "Principal"], correct: 0 },
+                    { q: "En un experimento, la variable que manipula el investigador es:", options: ["V. Dependiente", "V. Independiente", "El instrumento", "La hipótesis"], correct: 1 }
+                ],
+                hard: [
+                    { q: "En diseños ex-post-facto, la V.I. se caracteriza porque:", options: ["Se manipula activamente", "No se manipula (ya ocurrió)", "Se elimina", "Es cualitativa"], correct: 1 },
+                    { q: "¿Qué rol juega una 'Covariable'?", options: ["Es la causa principal", "Se controla estadísticamente para neutralizar su efecto", "Es el resultado final", "No sirve"], correct: 1 },
+                    { q: "Si X influye en Y, pero solo cuando Z está presente, Z es:", options: ["V. Moderadora", "V. Dependiente", "V. Espuria", "V. Constante"], correct: 0 }
+                ]
+            }
+        },
+        {
+            topic: "Planteamiento del Problema",
+            questions: {
+                easy: [
+                    { q: "Delimitar el problema significa:", options: ["Hacerlo infinito", "Poner límites (espacio/tiempo)", "No hacer nada", "Escribir mucho"], correct: 1 },
+                    { q: "¿Cómo se suele redactar el problema general?", options: ["Como afirmación", "Como pregunta (?)", "Como cita textual", "En otro idioma"], correct: 1 },
+                    { q: "El planteamiento va de lo:", options: ["General a lo específico", "Específico a lo general", "Personal a lo público", "Difícil a lo fácil"], correct: 0 }
+                ],
+                medium: [
+                    { q: "El 'Diagnóstico' describe:", options: ["La solución mágica", "Síntomas y causas de la realidad", "La bibliografía", "Los anexos"], correct: 1 },
+                    { q: "¿Qué criterio es FALSO para un problema científico?", options: ["Debe ser real", "Debe ser medible", "Debe basarse en opiniones morales", "Debe ser resoluble"], correct: 2 },
+                    { q: "El pronóstico advierte:", options: ["Lo que pasará si el problema persiste", "El costo de la tesis", "La fecha de sustentación", "El nombre del asesor"], correct: 0 }
+                ],
+                hard: [
+                    { q: "Diferencia entre Situación Problemática y Formulación:", options: ["Son sinónimos", "Situación es contexto (texto); Formulación es la pregunta", "Formulación es texto; Situación es pregunta", "Ninguna"], correct: 1 },
+                    { q: "En la matriz de consistencia, el problema se alinea con:", options: ["La dedicatoria", "Objetivos e Hipótesis", "El índice", "Los agradecimientos"], correct: 1 },
+                    { q: "Un problema de investigación busca llenar un:", options: ["Vacío de conocimiento", "Requisito burocrático", "Formulario web", "Espacio en la biblioteca"], correct: 0 }
+                ]
+            }
+        },
+        {
+            topic: "Objetivos de la Investigación",
+            questions: {
+                easy: [
+                    { q: "Los objetivos inician con un verbo en:", options: ["Pasado", "Infinitivo (ar, er, ir)", "Gerundio", "Futuro"], correct: 1 },
+                    { q: "El objetivo responde a:", options: ["¿Por qué?", "¿Para qué? / ¿Qué lograr?", "¿Cuándo?", "¿Quién?"], correct: 1 },
+                    { q: "¿Cuántos objetivos generales hay usualmente?", options: ["Uno", "Tres", "Cinco", "Varios"], correct: 0 }
+                ],
+                medium: [
+                    { q: "¿Qué verbo implica mayor complejidad cognitiva?", options: ["Listar", "Describir", "Evaluar / Proponer", "Identificar"], correct: 2 },
+                    { q: "Si el problema es '¿Cómo influye X...?', el objetivo es:", options: ["Conocer X", "Determinar la influencia de X...", "Mejorar X", "Olvidar X"], correct: 1 },
+                    { q: "Los objetivos específicos sirven para:", options: ["Desglosar el general", "Repetir el general", "Contradecir el título", "Llenar hojas"], correct: 0 }
+                ],
+                hard: [
+                    { q: "Un objetivo 'Propositivo' corresponde a una tesis:", options: ["Descriptiva", "Correlacional", "Proyectiva", "Histórica"], correct: 2 },
+                    { q: "¿Es correcto usar el verbo 'Investigar' como objetivo?", options: ["Sí, siempre", "No, es una actividad, no un logro final", "Depende del tema", "Solo en posgrado"], correct: 1 },
+                    { q: "La coherencia lógica implica que cada objetivo específico:", options: ["Sea más amplio que el general", "Genere una etapa de resultados", "Sea idéntico al general", "No tenga relación"], correct: 1 }
+                ]
+            }
+        },
+        {
+            topic: "Justificación",
+            questions: {
+                easy: [
+                    { q: "La justificación explica el:", options: ["Cómo", "Por qué y Para qué", "Dónde", "Quién"], correct: 1 },
+                    { q: "Si resuelve un problema social real, es justificación:", options: ["Teórica", "Práctica", "Metodológica", "Legal"], correct: 1 },
+                    { q: "Debe convencer al lector de la:", options: ["Relevancia del estudio", "Longitud del texto", "Amistad con el autor", "Tipografía usada"], correct: 0 }
+                ],
+                medium: [
+                    { q: "La justificación Teórica aporta:", options: ["Dinero", "Nuevos conceptos o modelos", "Soluciones físicas", "Leyes"], correct: 1 },
+                    { q: "La 'Viabilidad' analiza:", options: ["Si el tema es bonito", "Recursos (tiempo, dinero, acceso)", "La ortografía", "El color de la portada"], correct: 1 },
+                    { q: "Crear un nuevo test o instrumento es justificación:", options: ["Social", "Económica", "Metodológica", "Histórica"], correct: 2 }
+                ],
+                hard: [
+                    { q: "El criterio de 'Valor Teórico' implica:", options: ["Que la teoría se vea bonita", "Llenar vacíos o apoyar/refutar teorías", "Copiar teorías viejas", "Traducir textos"], correct: 1 },
+                    { q: "La 'Conveniencia' responde a:", options: ["¿Para qué sirve?", "¿Es fácil de hacer?", "¿Es barata?", "¿Me gusta?"], correct: 0 },
+                    { q: "Importancia vs Justificación:", options: ["Son iguales", "Importancia es el impacto; Justificación es el argumento lógico", "Justificación es opcional", "Ninguna"], correct: 1 }
+                ]
+            }
+        },
+        {
+            topic: "Operacionalización de Variables",
+            questions: {
+                easy: [
+                    { q: "Operacionalizar significa hacer la variable:", options: ["Invisible", "Medible", "Abstracta", "Grande"], correct: 1 },
+                    { q: "El elemento medible más pequeño es el:", options: ["Indicador", "Dimensión", "Variable", "Objetivo"], correct: 0 },
+                    { q: "La Definición Conceptual sale de:", options: ["Mi opinión", "Teorías y libros", "Wikipedia", "Chat GPT"], correct: 1 }
+                ],
+                medium: [
+                    { q: "Orden de descomposición lógico:", options: ["Variable -> Dimensión -> Indicador", "Indicador -> Variable", "Dimensión -> Variable", "Ítem -> Variable"], correct: 0 },
+                    { q: "La escala Likert (1-5) es de nivel:", options: ["Nominal", "Ordinal", "De Razón", "Binaria"], correct: 1 },
+                    { q: "¿Qué es una Dimensión?", options: ["Un universo paralelo", "Un factor o aspecto de la variable", "Una pregunta", "Un número"], correct: 1 }
+                ],
+                hard: [
+                    { q: "Si la variable es 'Peso en Kg' (hay cero absoluto), es escala:", options: ["Nominal", "Ordinal", "Intervalo", "De Razón"], correct: 3 },
+                    { q: "La Definición Operacional detalla:", options: ["Conceptos abstractos", "Cómo medir, observar y registrar datos", "Historia de la variable", "Etimología"], correct: 1 },
+                    { q: "Variables unidimensionales:", options: ["No requieren descomponerse en dimensiones", "No se pueden medir", "Son imposibles", "Tienen 10 dimensiones"], correct: 0 }
+                ]
+            }
+        }
+    ];
+
+    // ---------------------------------------------------------
+    // LÓGICA DEL JUEGO
+    // ---------------------------------------------------------
+    let state = {
+        player: "",
+        difficulty: "easy",
+        multiplier: 1,
+        level: 0,
+        qIndex: 0,
+        lives: 5,
+        score: 0,
+        time: 0,
+        timer: null,
+        mistakes: [] // Stores topics where errors occurred
+    };
+
+    const screens = {
+        welcome: document.getElementById('screen-welcome'),
+        game: document.getElementById('screen-game'),
+        levelEnd: document.getElementById('screen-level-end'),
+        gameOver: document.getElementById('screen-game-over'),
+        victory: document.getElementById('screen-victory')
+    };
+
+    function showScreen(name) {
+        Object.values(screens).forEach(s => s.classList.remove('active'));
+        screens[name].classList.add('active');
+    }
+
+    function startGame() {
+        const nameInput = document.getElementById('player-name');
+        if (!nameInput.value.trim()) {
+            alert("⚠️ Por favor escribe tu nombre para comenzar.");
+            return;
+        }
+
+        state.player = nameInput.value.trim();
+        state.difficulty = document.getElementById('difficulty').value;
+        
+        // Set multiplier
+        if(state.difficulty === 'easy') state.multiplier = 1;
+        if(state.difficulty === 'medium') state.multiplier = 1.5;
+        if(state.difficulty === 'hard') state.multiplier = 2.5;
+
+        // Reset
+        state.lives = 5;
+        state.score = 0;
+        state.level = 0;
+        state.mistakes = [];
+
+        loadLevel(0);
+    }
+
+    function loadLevel(idx) {
+        state.level = idx;
+        state.qIndex = 0;
+        state.time = 0;
+
+        if (idx >= gameData.length) {
+            finishGame();
+            return;
+        }
+
+        const data = gameData[idx];
+        document.getElementById('hud-level').innerText = `Nivel ${idx + 1}`;
+        document.getElementById('level-title').innerText = data.topic;
+        updateStats();
+        
+        showScreen('game');
+
+        // Reset and start timer
+        if (state.timer) clearInterval(state.timer);
+        state.timer = setInterval(() => {
+            state.time++;
+            document.getElementById('timer').innerText = state.time;
+        }, 1000);
+
+        renderQuestion();
+    }
+
+    function renderQuestion() {
+        const data = gameData[state.level];
+        // Access specific difficulty array
+        const qList = data.questions[state.difficulty];
+        const q = qList[state.qIndex];
+
+        // Progress
+        const percent = (state.qIndex / qList.length) * 100;
+        document.getElementById('progress-fill').style.width = percent + "%";
+
+        document.getElementById('question-text').innerText = q.q;
+
+        const container = document.getElementById('options-container');
+        container.innerHTML = "";
+
+        q.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => handleAnswer(index, btn, qList.length);
+            container.appendChild(btn);
+        });
+    }
+
+    function handleAnswer(selectedIndex, btn, totalQ) {
+        const data = gameData[state.level];
+        const qList = data.questions[state.difficulty];
+        const currentQ = qList[state.qIndex];
+        const allBtns = document.querySelectorAll('.option-btn');
+
+        // Disable clicks
+        allBtns.forEach(b => b.disabled = true);
+
+        if (selectedIndex === currentQ.correct) {
+            btn.classList.add('correct');
+            state.score += Math.round(100 * state.multiplier);
+            setTimeout(() => nextQ(totalQ), 1000);
+        } else {
+            btn.classList.add('wrong');
+            // Show correct one
+            allBtns[currentQ.correct].classList.add('correct');
+            state.lives--;
+            
+            // Log mistake unique to topic
+            if(!state.mistakes.includes(data.topic)) {
+                state.mistakes.push(data.topic);
+            }
+
+            updateStats();
+
+            if (state.lives <= 0) {
+                setTimeout(gameOver, 1500);
+            } else {
+                setTimeout(() => nextQ(totalQ), 1500);
+            }
+        }
+    }
+
+    function nextQ(total) {
+        state.qIndex++;
+        if (state.qIndex < total) {
+            renderQuestion();
+        } else {
+            endLevel();
+        }
+    }
+
+    function endLevel() {
+        clearInterval(state.timer);
+        
+        // Calc Rank
+        const scoreBase = 500;
+        const timePenalty = state.time * 5;
+        const lifeBonus = state.lives * 50;
+        const totalPerf = scoreBase - timePenalty + lifeBonus;
+
+        let rank = "B";
+        let msg = "Bien hecho.";
+        
+        if (totalPerf > 600) { rank = "S+"; msg = "¡Nivel Legendario!"; }
+        else if (totalPerf > 500) { rank = "A"; msg = "Excelente Dominio."; }
+        else if (totalPerf < 300) { rank = "C"; msg = "Puedes mejorar el tiempo."; }
+
+        document.getElementById('end-time').innerText = state.time;
+        document.getElementById('end-lives').innerText = state.lives;
+        document.getElementById('rank-badge').innerText = `RANGO ${rank}`;
+        document.getElementById('rank-msg').innerText = msg;
+
+        showScreen('levelEnd');
+    }
+
+    function nextLevel() {
+        loadLevel(state.level + 1);
+    }
+
+    function gameOver() {
+        clearInterval(state.timer);
+        document.getElementById('final-score').innerText = state.score;
+        showFeedback('feedback-list-fail', 'feedback-area-fail');
+        showScreen('gameOver');
+    }
+
+    function finishGame() {
+        clearInterval(state.timer);
+        document.getElementById('victory-score').innerText = state.score;
+        
+        let msg = "¡Has demostrado gran capacidad investigativa!";
+        if(state.difficulty === 'hard') msg = "¡NIVEL EXPERTO! Estás listo para sustentar.";
+        
+        document.getElementById('victory-rank-msg').innerText = msg;
+        showFeedback('feedback-list-win', 'feedback-area-win');
+        showScreen('victory');
+    }
+
+    function showFeedback(listId, boxId) {
+        const list = document.getElementById(listId);
+        const box = document.getElementById(boxId);
+        list.innerHTML = "";
+
+        if (state.mistakes.length === 0) {
+            box.style.display = "none";
+        } else {
+            box.style.display = "block";
+            state.mistakes.forEach(topic => {
+                const li = document.createElement('li');
+                li.innerText = topic;
+                list.appendChild(li);
+            });
+        }
+    }
+
+    function restartGame() {
+        location.reload();
+    }
+
+    function updateStats() {
+        const hearts = "❤".repeat(state.lives);
+        const empty = "♡".repeat(5 - state.lives);
+        document.querySelector('.lives').innerHTML = hearts + empty;
+        document.getElementById('score').innerText = state.score;
+    }
+
+    // Indicate system ready
+    console.log("Sistema Tesis V3 Cargado Correctamente");
+</script>
+
+</body>
+</html>
