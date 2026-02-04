@@ -3,581 +3,681 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Tesis: Juego Adaptativo V3</title>
+    <title>Investigador Pro: El Juego de la Tesis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root {
-            --primary: #2c3e50;
-            --accent: #8e44ad;
-            --success: #27ae60;
-            --danger: #c0392b;
-            --warning: #f1c40f;
-            --light: #f4f6f7;
+            --primary: #2563eb;
+            --secondary: #7c3aed;
+            --success: #10b981;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --light: #f3f4f6;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            color: var(--primary);
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            color: var(--dark);
         }
 
-        .container {
-            background-color: white;
+        #app {
+            background: white;
+            width: 95%;
+            max-width: 900px;
+            border-radius: 24px;
             padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
-            width: 90%;
-            max-width: 650px;
-            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             position: relative;
             overflow: hidden;
-            border-top: 6px solid var(--accent);
         }
 
-        h1, h2 { color: var(--primary); margin: 0 0 15px 0; }
-        
-        .screen { display: none; animation: fadeIn 0.4s ease-out; }
+        .screen { display: none; animation: slideIn 0.4s ease-out; }
         .active { display: block; }
 
-        /* Inputs */
-        input, select {
-            padding: 12px;
-            font-size: 16px;
-            border-radius: 8px;
-            border: 2px solid #bdc3c7;
-            margin: 10px 0;
-            width: 100%;
-            max-width: 300px;
-            outline: none;
-            box-sizing: border-box;
-        }
-        input:focus, select:focus { border-color: var(--accent); }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Buttons */
+        .hud {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            background: var(--light);
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
         button {
-            background-color: var(--accent);
+            background: var(--primary);
             color: white;
             border: none;
-            padding: 12px 30px;
-            font-size: 18px;
-            border-radius: 50px;
+            padding: 12px 24px;
+            border-radius: 12px;
             cursor: pointer;
-            margin-top: 20px;
-            font-weight: bold;
-            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin: 5px;
         }
-        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(142, 68, 173, 0.4); }
-        button:active { transform: scale(0.98); }
 
-        /* HUD */
-        .hud {
+        button:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.1); }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+
+        .grid-memory {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .card {
+            height: 85px;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            padding: 5px;
+            text-align: center;
+            transition: 0.3s;
+            font-weight: 600;
+        }
+
+        .card.flipped { background: var(--secondary); }
+        .card.matched { background: var(--success); opacity: 0.6; cursor: default; }
+
+        .matching-container {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            background: var(--light);
-            padding: 10px 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-weight: bold;
-            font-size: 0.95rem;
+            position: relative;
+            margin-top: 20px;
+            gap: 50px;
         }
-        .lives { color: var(--danger); font-size: 1.2rem; }
-
-        /* Questions */
-        .question-box {
-            font-size: 1.25rem;
-            font-weight: 500;
-            margin-bottom: 25px;
-            line-height: 1.5;
-            color: #34495e;
-            min-height: 80px;
+        .match-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 2;
+            width: 45%;
+        }
+        .match-item {
+            padding: 15px;
+            background: var(--light);
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            text-align: center;
+            transition: 0.3s;
+            min-height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-
-        .options-grid { display: grid; gap: 12px; }
-
-        .option-btn {
-            background-color: white;
-            color: var(--primary);
-            border: 2px solid #dfe6e9;
-            padding: 15px;
-            text-align: left;
-            border-radius: 8px;
-            width: 100%;
-            font-size: 1rem;
-            transition: all 0.2s;
-        }
-        .option-btn:hover:not(:disabled) { border-color: var(--accent); background-color: #fbf6ff; }
-
-        /* Feedback Styles */
-        .correct { background-color: var(--success) !important; color: white !important; border-color: var(--success) !important; }
-        .wrong { background-color: var(--danger) !important; color: white !important; border-color: var(--danger) !important; }
-
-        /* Ranking Card */
-        .ranking-card {
-            background: #fff;
-            border: 1px solid #eee;
-            padding: 20px;
-            margin-top: 15px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        .match-item.selected { border-color: var(--secondary); background: #e0d4ff; }
+        .match-item.correct { border-color: var(--success); background: #d1fae5; cursor: default; }
+        
+        canvas#line-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 1;
         }
 
-        /* Reinforcement Area */
-        .reinforcement-box {
-            background-color: #fff8e1;
-            border-left: 5px solid var(--warning);
-            color: #795548;
-            padding: 15px;
-            margin-top: 20px;
-            text-align: left;
+        .hangman-hint {
+            background-color: #fef3c7;
+            border-left: 5px solid #f59e0b;
+            color: #92400e;
+            padding: 10px;
+            margin-bottom: 15px;
             border-radius: 4px;
+            font-style: italic;
             font-size: 0.95rem;
         }
-        .reinforcement-list { margin: 10px 0 0 0; padding-left: 20px; }
+        .hangman-word { font-size: 2.2rem; letter-spacing: 12px; margin: 15px 0; font-weight: 800; color: var(--secondary); text-align: center; text-transform: uppercase;}
+        .alphabet { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-top: 10px; }
 
-        /* Progress Bar */
-        .progress-track {
+        .ranking-box {
+            border: 2px solid var(--light);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            background: #fafafa;
+        }
+
+        .ranking-table-container {
+            margin-top: 20px;
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid #eee;
+        }
+        .ranking-table {
             width: 100%;
-            background-color: #ecf0f1;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            background: white;
+        }
+        .ranking-table th {
+            background: var(--primary);
+            color: white;
+            padding: 10px;
+            text-align: center;
+        }
+        .ranking-table td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+        .ranking-table tr:last-child td { border-bottom: none; }
+
+        .final-leaderboard {
+            margin-top: 30px;
+            padding: 20px;
+            background: #fff;
+            border: 3px solid var(--secondary);
+            border-radius: 15px;
+        }
+
+        /* Estilo para la tabla del menú inicial */
+        .initial-ranking {
+            margin-top: 25px;
+            background: var(--light);
+            padding: 15px;
+            border-radius: 15px;
+        }
+
+        .progress-bar {
             height: 8px;
+            background: #eee;
             border-radius: 4px;
             margin-bottom: 20px;
-            overflow: hidden;
-        }
-        .progress-fill {
-            height: 100%;
-            background-color: var(--success);
-            width: 0%;
-            transition: width 0.3s ease;
         }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        #progress-fill {
+            height: 100%;
+            background: var(--success);
+            width: 0%;
+            transition: 0.5s;
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div id="screen-welcome" class="screen active">
-        <h1>🎓 Master Tesis V3</h1>
-        <p>Evaluación Metodológica Adaptativa</p>
-        
-        <input type="text" id="player-name" placeholder="Ingresa tu nombre..." autocomplete="off">
-        
-        <br><br>
-        <label for="difficulty"><strong>Nivel de Dificultad:</strong></label><br>
-        <select id="difficulty">
-            <option value="easy">🟢 Fácil (Conceptos)</option>
-            <option value="medium">🟡 Medio (Aplicación)</option>
-            <option value="hard">🔴 Difícil (Análisis)</option>
+<div id="app">
+    <div id="screen-setup" class="screen active">
+        <h1 style="text-align: center; color: var(--primary);">🎓 Tesis Master: El Desafío</h1>
+        <p style="text-align: center;">Domina la metodología a través de retos dinámicos.</p>
+        <label>Nombre del Investigador:</label>
+        <input type="text" id="player-name" placeholder="Ej. Dr. García" style="width:100%; padding:12px; margin:10px 0; border:2px solid var(--light); border-radius:10px;">
+        <label>Nivel de Dificultad:</label>
+        <select id="difficulty" style="width:100%; padding:12px; margin:10px 0; border:2px solid var(--light); border-radius:10px;">
+            <option value="Fácil">Fácil</option>
+            <option value="Medio">Medio</option>
+            <option value="Difícil">Difícil</option>
         </select>
-        
-        <p style="font-size: 0.8rem; color: #7f8c8d;">
-            *Modo Difícil otorga x2.5 puntos.
-        </p>
-        
-        <button onclick="startGame()" id="btn-start">Comenzar</button>
+        <button onclick="initGame()" style="width: 100%; margin-top: 20px;">INICIAR INVESTIGACIÓN</button>
+
+        <div class="initial-ranking" id="historical-ranking-section">
+            <h3 style="text-align: center; font-size: 1rem; color: var(--secondary); margin-top: 0;">🏆 RANKING HISTÓRICO</h3>
+            <div class="ranking-table-container">
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th>Investigador</th>
+                            <th>Dificultad</th>
+                            <th>Puntaje Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historical-ranking-body">
+                        </tbody>
+                </table>
+            </div>
+            <button onclick="clearRanking()" style="background: var(--danger); font-size: 0.7rem; padding: 5px 10px; margin-top: 10px;">Limpiar Ranking</button>
+        </div>
     </div>
 
     <div id="screen-game" class="screen">
         <div class="hud">
-            <span id="hud-level">Nivel 1</span>
-            <span class="lives">❤❤❤❤❤ <span id="lives-num" style="display:none">5</span></span>
-            <span class="timer">⏱ <span id="timer">0</span>s</span>
-            <span>Pts: <span id="score">0</span></span>
+            <div>❤️ <span id="lives">5</span></div>
+            <div>⏱️ <span id="timer">0</span>s</div>
+            <div>⭐ <span id="score">0</span></div>
+            <div>📍 Nivel <span id="lvl-num">1</span></div>
         </div>
-        
-        <div class="progress-track">
-            <div id="progress-fill" class="progress-fill"></div>
-        </div>
-
-        <h3 id="level-title" style="color:var(--accent); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; margin-top:0;">Tema</h3>
-        
-        <div id="question-text" class="question-box">Cargando...</div>
-        
-        <div id="options-container" class="options-grid"></div>
+        <div class="progress-bar"><div id="progress-fill"></div></div>
+        <h2 id="level-topic" style="color: var(--secondary); margin-bottom: 5px;"></h2>
+        <h4 id="activity-desc" style="margin-top: 0; color: #666;"></h4>
+        <div id="game-content"></div>
     </div>
 
-    <div id="screen-level-end" class="screen">
-        <h2 style="color:var(--success)">✅ ¡Nivel Completado!</h2>
-        <div class="ranking-card">
-            <p>Tiempo: <strong><span id="end-time"></span>s</strong> | Vidas restantes: <strong><span id="end-lives"></span></strong></p>
-            <hr style="opacity: 0.3;">
-            <h1 id="rank-badge" style="margin: 10px 0; color:var(--accent)">RANGO A</h1>
-            <p id="rank-msg">Muy buen desempeño.</p>
+    <div id="screen-rank" class="screen">
+        <h2 id="rank-title" style="text-align: center;"></h2>
+        <div class="ranking-box">
+            <p>Tiempo empleado: <strong id="rank-time"></strong>s</p>
+            <p>Vidas restantes: <strong id="rank-lives"></strong></p>
+            <p>Puntaje obtenido: <strong id="rank-score"></strong></p>
+            <hr>
+            <h3 id="rank-grade" style="text-align: center; font-size: 2rem; margin-bottom: 10px;"></h3>
+            
+            <div class="ranking-table-container">
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th>Nivel</th>
+                            <th>Dificultad</th>
+                            <th>Tiempo</th>
+                            <th>Vidas</th>
+                            <th>Puntaje</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-body">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="final-leaderboard-container" class="final-leaderboard" style="display: none;">
+                <h3 style="text-align: center; color: var(--secondary);">🏆 TABLA DE PUESTOS FINAL</h3>
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Dificultad</th>
+                            <th>Porcentaje Éxito</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                    </tbody>
+                </table>
+            </div>
         </div>
-        <button onclick="nextLevel()">Siguiente Nivel ➡</button>
-    </div>
-
-    <div id="screen-game-over" class="screen">
-        <h1 style="color:var(--danger)">☠ GAME OVER</h1>
-        <p>Se agotaron tus oportunidades.</p>
-        
-        <div id="feedback-area-fail" class="reinforcement-box" style="display:none;">
-            <strong>⚠ TEMAS A REFORZAR:</strong>
-            <ul id="feedback-list-fail" class="reinforcement-list"></ul>
-        </div>
-
-        <p style="margin-top:20px">Puntaje Final: <strong id="final-score"></strong></p>
-        <button onclick="restartGame()">Intentar de Nuevo</button>
-    </div>
-
-    <div id="screen-victory" class="screen">
-        <h1>🎉 ¡TESIS APROBADA!</h1>
-        <p>Has superado todos los niveles metodológicos.</p>
-        
-        <div class="ranking-card">
-            <h2>Puntaje Total: <span id="victory-score" style="color:var(--accent)"></span></h2>
-            <p id="victory-rank-msg"></p>
-        </div>
-
-        <div id="feedback-area-win" class="reinforcement-box" style="display:none;">
-            <strong>📝 Observaciones (Pequeños errores):</strong>
-            <ul id="feedback-list-win" class="reinforcement-list"></ul>
-        </div>
-
-        <button onclick="restartGame()">Volver a Jugar</button>
+        <button id="btn-next-lvl" onclick="startLevel(gameState.currentLevel + 1)" style="width: 100%; margin-top: 20px;">Siguiente Nivel ➡</button>
     </div>
 </div>
 
 <script>
-    // ---------------------------------------------------------
-    // BANCO DE PREGUNTAS (Verificado sin errores de sintaxis)
-    // ---------------------------------------------------------
-    const gameData = [
-        {
-            topic: "Variables: Dependiente e Independiente",
-            questions: {
-                easy: [
-                    { q: "¿Qué variable representa la 'Causa'?", options: ["Dependiente", "Independiente", "Extraña", "Nula"], correct: 1 },
-                    { q: "En 'Efecto del sol en plantas', la planta es la variable:", options: ["Independiente", "Dependiente", "Constante", "Ninguna"], correct: 1 },
-                    { q: "La variable que se mide u observa es la:", options: ["Independiente", "Dependiente", "Interviniente", "Aleatoria"], correct: 1 }
-                ],
-                medium: [
-                    { q: "Si estudias 'Estrés y Rendimiento', el Estrés es:", options: ["V. Dependiente", "V. Independiente", "Constante", "Muestra"], correct: 1 },
-                    { q: "¿Cómo se llama la variable que 'estorba' o altera los resultados?", options: ["Interviniente / Extraña", "Independiente", "Dependiente", "Principal"], correct: 0 },
-                    { q: "En un experimento, la variable que manipula el investigador es:", options: ["V. Dependiente", "V. Independiente", "El instrumento", "La hipótesis"], correct: 1 }
-                ],
-                hard: [
-                    { q: "En diseños ex-post-facto, la V.I. se caracteriza porque:", options: ["Se manipula activamente", "No se manipula (ya ocurrió)", "Se elimina", "Es cualitativa"], correct: 1 },
-                    { q: "¿Qué rol juega una 'Covariable'?", options: ["Es la causa principal", "Se controla estadísticamente para neutralizar su efecto", "Es el resultado final", "No sirve"], correct: 1 },
-                    { q: "Si X influye en Y, pero solo cuando Z está presente, Z es:", options: ["V. Moderadora", "V. Dependiente", "V. Espuria", "V. Constante"], correct: 0 }
-                ]
-            }
-        },
-        {
-            topic: "Planteamiento del Problema",
-            questions: {
-                easy: [
-                    { q: "Delimitar el problema significa:", options: ["Hacerlo infinito", "Poner límites (espacio/tiempo)", "No hacer nada", "Escribir mucho"], correct: 1 },
-                    { q: "¿Cómo se suele redactar el problema general?", options: ["Como afirmación", "Como pregunta (?)", "Como cita textual", "En otro idioma"], correct: 1 },
-                    { q: "El planteamiento va de lo:", options: ["General a lo específico", "Específico a lo general", "Personal a lo público", "Difícil a lo fácil"], correct: 0 }
-                ],
-                medium: [
-                    { q: "El 'Diagnóstico' describe:", options: ["La solución mágica", "Síntomas y causas de la realidad", "La bibliografía", "Los anexos"], correct: 1 },
-                    { q: "¿Qué criterio es FALSO para un problema científico?", options: ["Debe ser real", "Debe ser medible", "Debe basarse en opiniones morales", "Debe ser resoluble"], correct: 2 },
-                    { q: "El pronóstico advierte:", options: ["Lo que pasará si el problema persiste", "El costo de la tesis", "La fecha de sustentación", "El nombre del asesor"], correct: 0 }
-                ],
-                hard: [
-                    { q: "Diferencia entre Situación Problemática y Formulación:", options: ["Son sinónimos", "Situación es contexto (texto); Formulación es la pregunta", "Formulación es texto; Situación es pregunta", "Ninguna"], correct: 1 },
-                    { q: "En la matriz de consistencia, el problema se alinea con:", options: ["La dedicatoria", "Objetivos e Hipótesis", "El índice", "Los agradecimientos"], correct: 1 },
-                    { q: "Un problema de investigación busca llenar un:", options: ["Vacío de conocimiento", "Requisito burocrático", "Formulario web", "Espacio en la biblioteca"], correct: 0 }
-                ]
-            }
-        },
-        {
-            topic: "Objetivos de la Investigación",
-            questions: {
-                easy: [
-                    { q: "Los objetivos inician con un verbo en:", options: ["Pasado", "Infinitivo (ar, er, ir)", "Gerundio", "Futuro"], correct: 1 },
-                    { q: "El objetivo responde a:", options: ["¿Por qué?", "¿Para qué? / ¿Qué lograr?", "¿Cuándo?", "¿Quién?"], correct: 1 },
-                    { q: "¿Cuántos objetivos generales hay usualmente?", options: ["Uno", "Tres", "Cinco", "Varios"], correct: 0 }
-                ],
-                medium: [
-                    { q: "¿Qué verbo implica mayor complejidad cognitiva?", options: ["Listar", "Describir", "Evaluar / Proponer", "Identificar"], correct: 2 },
-                    { q: "Si el problema es '¿Cómo influye X...?', el objetivo es:", options: ["Conocer X", "Determinar la influencia de X...", "Mejorar X", "Olvidar X"], correct: 1 },
-                    { q: "Los objetivos específicos sirven para:", options: ["Desglosar el general", "Repetir el general", "Contradecir el título", "Llenar hojas"], correct: 0 }
-                ],
-                hard: [
-                    { q: "Un objetivo 'Propositivo' corresponde a una tesis:", options: ["Descriptiva", "Correlacional", "Proyectiva", "Histórica"], correct: 2 },
-                    { q: "¿Es correcto usar el verbo 'Investigar' como objetivo?", options: ["Sí, siempre", "No, es una actividad, no un logro final", "Depende del tema", "Solo en posgrado"], correct: 1 },
-                    { q: "La coherencia lógica implica que cada objetivo específico:", options: ["Sea más amplio que el general", "Genere una etapa de resultados", "Sea idéntico al general", "No tenga relación"], correct: 1 }
-                ]
-            }
-        },
-        {
-            topic: "Justificación",
-            questions: {
-                easy: [
-                    { q: "La justificación explica el:", options: ["Cómo", "Por qué y Para qué", "Dónde", "Quién"], correct: 1 },
-                    { q: "Si resuelve un problema social real, es justificación:", options: ["Teórica", "Práctica", "Metodológica", "Legal"], correct: 1 },
-                    { q: "Debe convencer al lector de la:", options: ["Relevancia del estudio", "Longitud del texto", "Amistad con el autor", "Tipografía usada"], correct: 0 }
-                ],
-                medium: [
-                    { q: "La justificación Teórica aporta:", options: ["Dinero", "Nuevos conceptos o modelos", "Soluciones físicas", "Leyes"], correct: 1 },
-                    { q: "La 'Viabilidad' analiza:", options: ["Si el tema es bonito", "Recursos (tiempo, dinero, acceso)", "La ortografía", "El color de la portada"], correct: 1 },
-                    { q: "Crear un nuevo test o instrumento es justificación:", options: ["Social", "Económica", "Metodológica", "Histórica"], correct: 2 }
-                ],
-                hard: [
-                    { q: "El criterio de 'Valor Teórico' implica:", options: ["Que la teoría se vea bonita", "Llenar vacíos o apoyar/refutar teorías", "Copiar teorías viejas", "Traducir textos"], correct: 1 },
-                    { q: "La 'Conveniencia' responde a:", options: ["¿Para qué sirve?", "¿Es fácil de hacer?", "¿Es barata?", "¿Me gusta?"], correct: 0 },
-                    { q: "Importancia vs Justificación:", options: ["Son iguales", "Importancia es el impacto; Justificación es el argumento lógico", "Justificación es opcional", "Ninguna"], correct: 1 }
-                ]
-            }
-        },
-        {
-            topic: "Operacionalización de Variables",
-            questions: {
-                easy: [
-                    { q: "Operacionalizar significa hacer la variable:", options: ["Invisible", "Medible", "Abstracta", "Grande"], correct: 1 },
-                    { q: "El elemento medible más pequeño es el:", options: ["Indicador", "Dimensión", "Variable", "Objetivo"], correct: 0 },
-                    { q: "La Definición Conceptual sale de:", options: ["Mi opinión", "Teorías y libros", "Wikipedia", "Chat GPT"], correct: 1 }
-                ],
-                medium: [
-                    { q: "Orden de descomposición lógico:", options: ["Variable -> Dimensión -> Indicador", "Indicador -> Variable", "Dimensión -> Variable", "Ítem -> Variable"], correct: 0 },
-                    { q: "La escala Likert (1-5) es de nivel:", options: ["Nominal", "Ordinal", "De Razón", "Binaria"], correct: 1 },
-                    { q: "¿Qué es una Dimensión?", options: ["Un universo paralelo", "Un factor o aspecto de la variable", "Una pregunta", "Un número"], correct: 1 }
-                ],
-                hard: [
-                    { q: "Si la variable es 'Peso en Kg' (hay cero absoluto), es escala:", options: ["Nominal", "Ordinal", "Intervalo", "De Razón"], correct: 3 },
-                    { q: "La Definición Operacional detalla:", options: ["Conceptos abstractos", "Cómo medir, observar y registrar datos", "Historia de la variable", "Etimología"], correct: 1 },
-                    { q: "Variables unidimensionales:", options: ["No requieren descomponerse en dimensiones", "No se pueden medir", "Son imposibles", "Tienen 10 dimensiones"], correct: 0 }
-                ]
-            }
-        }
-    ];
-
-    // ---------------------------------------------------------
-    // LÓGICA DEL JUEGO
-    // ---------------------------------------------------------
-    let state = {
-        player: "",
-        difficulty: "easy",
-        multiplier: 1,
-        level: 0,
-        qIndex: 0,
+    const gameState = {
+        playerName: "",
+        difficulty: "Fácil",
+        currentLevel: 1,
+        currentActivity: 0,
         lives: 5,
         score: 0,
-        time: 0,
-        timer: null,
-        mistakes: [] // Stores topics where errors occurred
+        lvlTime: 0,
+        timerInterval: null,
+        selectedMatch: null,
+        rankingHistory: [] 
     };
 
-    const screens = {
-        welcome: document.getElementById('screen-welcome'),
-        game: document.getElementById('screen-game'),
-        levelEnd: document.getElementById('screen-level-end'),
-        gameOver: document.getElementById('screen-game-over'),
-        victory: document.getElementById('screen-victory')
+    const levelsData = {
+        1: { 
+            title: "Variables Independiente y Dependiente", 
+            activities: [
+                { type: "connect", pairs: [
+                    {a: "Causa", target: "Independiente"}, {a: "Manipulada", target: "Independiente"},
+                    {a: "Efecto", target: "Dependiente"}, {a: "Medida", target: "Dependiente"}
+                ], rightOptions: ["Independiente", "Dependiente", "Independiente", "Dependiente"] },
+                { type: "memory", pairs: [
+                    {text: "X", target: "Independiente"}, {text: "Independiente", target: "Independiente"},
+                    {text: "Y", target: "Dependiente"}, {text: "Dependiente", target: "Dependiente"},
+                    {text: "Estímulo", target: "Independiente"}, {text: "Causa", target: "Independiente"},
+                    {text: "Respuesta", target: "Dependiente"}, {text: "Efecto", target: "Dependiente"}
+                ]},
+                { type: "hangman", word: "DEPENDIENTE", hint: "Es la variable que representa el efecto o resultado que se mide en la investigación." }
+            ]
+        },
+        2: { 
+            title: "Planteamiento del Problema", 
+            activities: [
+                { type: "connect", pairs: [
+                    {a: "Espacio", target: "Geográfico"}, {a: "Tiempo", target: "Cronológico"}, 
+                    {a: "Sujetos", target: "Población"}, {a: "Vacío", target: "Conocimiento"}
+                ], rightOptions: ["Geográfico", "Cronológico", "Población", "Conocimiento"] },
+                { type: "hangman", word: "DELIMITACION", hint: "Acción de establecer los límites físicos, temporales y conceptuales de la investigación." },
+                { type: "select", q: "El planteamiento debe ser:", options: ["Vago", "Preciso y medible", "Subjetivo"], correct: 1 }
+            ]
+        },
+        3: { 
+            title: "Objetivos de la Tesis", 
+            activities: [
+                { type: "hangman", word: "INFINITIVO", hint: "Forma verbal (Ar, Er, Ir) con la que deben iniciar obligatoriamente los objetivos." },
+                { type: "connect", pairs: [
+                    {a: "Verbo inicial", target: "Infinitivo"}, {a: "Pasos", target: "Específicos"}, 
+                    {a: "Meta final", target: "General"}, {a: "Atributo", target: "Medible"}
+                ], rightOptions: ["Infinitivo", "Específicos", "General", "Medible"] }
+            ]
+        },
+        4: { 
+            title: "Justificación de la Tesis", 
+            activities: [
+                { type: "connect", pairs: [
+                    {a: "Social", target: "Beneficiarios"}, {a: "Teórica", target: "Vacío cognitivo"}, 
+                    {a: "Práctica", target: "Solución"}, {a: "Metodológica", target: "Instrumento"}
+                ], rightOptions: ["Beneficiarios", "Vacío cognitivo", "Solución", "Instrumento"] },
+                { type: "hangman", word: "VIABILIDAD", hint: "Indica si la investigación es posible de realizar con los recursos disponibles." }
+            ]
+        },
+        5: { 
+            title: "Operacionalización", 
+            activities: [
+                { type: "connect", pairs: [
+                    {a: "Variable", target: "Concepto"}, {a: "Dimensión", target: "Subvariable"}, 
+                    {a: "Indicador", target: "Unidad"}, {a: "Ítem", target: "Pregunta"}
+                ], rightOptions: ["Concepto", "Subvariable", "Unidad", "Pregunta"] },
+                { type: "hangman", word: "INDICADOR", hint: "Elemento concreto y medible que permite verificar el estado de una dimensión." }
+            ]
+        }
     };
 
-    function showScreen(name) {
-        Object.values(screens).forEach(s => s.classList.remove('active'));
-        screens[name].classList.add('active');
+    // FUNCIÓN PARA CARGAR RANKING HISTÓRICO
+    function loadHistoricalRanking() {
+        const ranking = JSON.parse(localStorage.getItem('tesis_ranking')) || [];
+        const tbody = document.getElementById('historical-ranking-body');
+        tbody.innerHTML = "";
+        
+        // Ordenar por puntaje de mayor a menor
+        ranking.sort((a, b) => b.total - a.total);
+
+        ranking.slice(0, 5).forEach(player => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-weight:bold">${player.name}</td>
+                <td>${player.diff}</td>
+                <td style="color:var(--primary); font-weight:800">${player.total}</td>
+            `;
+            tbody.appendChild(tr);
+        });
     }
 
-    function startGame() {
-        const nameInput = document.getElementById('player-name');
-        if (!nameInput.value.trim()) {
-            alert("⚠️ Por favor escribe tu nombre para comenzar.");
-            return;
-        }
-
-        state.player = nameInput.value.trim();
-        state.difficulty = document.getElementById('difficulty').value;
-        
-        // Set multiplier
-        if(state.difficulty === 'easy') state.multiplier = 1;
-        if(state.difficulty === 'medium') state.multiplier = 1.5;
-        if(state.difficulty === 'hard') state.multiplier = 2.5;
-
-        // Reset
-        state.lives = 5;
-        state.score = 0;
-        state.level = 0;
-        state.mistakes = [];
-
-        loadLevel(0);
+    function clearRanking() {
+        localStorage.removeItem('tesis_ranking');
+        loadHistoricalRanking();
     }
 
-    function loadLevel(idx) {
-        state.level = idx;
-        state.qIndex = 0;
-        state.time = 0;
-
-        if (idx >= gameData.length) {
-            finishGame();
-            return;
-        }
-
-        const data = gameData[idx];
-        document.getElementById('hud-level').innerText = `Nivel ${idx + 1}`;
-        document.getElementById('level-title').innerText = data.topic;
-        updateStats();
+    function saveToHistoricalRanking() {
+        const ranking = JSON.parse(localStorage.getItem('tesis_ranking')) || [];
+        let totalScore = 0;
+        gameState.rankingHistory.forEach(item => totalScore += item.score);
         
-        showScreen('game');
+        ranking.push({
+            name: gameState.playerName,
+            diff: gameState.difficulty,
+            total: totalScore
+        });
 
-        // Reset and start timer
-        if (state.timer) clearInterval(state.timer);
-        state.timer = setInterval(() => {
-            state.time++;
-            document.getElementById('timer').innerText = state.time;
+        localStorage.setItem('tesis_ranking', JSON.stringify(ranking));
+    }
+
+    function initGame() {
+        gameState.playerName = document.getElementById('player-name').value || "Investigador";
+        gameState.difficulty = document.getElementById('difficulty').value;
+        startLevel(1);
+    }
+
+    function startLevel(num) {
+        if(num > 5) return;
+        gameState.currentLevel = num;
+        gameState.currentActivity = 0;
+        gameState.lvlTime = 0;
+        gameState.lives = 5;
+        gameState.score = 0;
+        showScreen('screen-game');
+        updateHUD();
+        if(gameState.timerInterval) clearInterval(gameState.timerInterval);
+        gameState.timerInterval = setInterval(() => {
+            gameState.lvlTime++;
+            document.getElementById('timer').innerText = gameState.lvlTime;
         }, 1000);
-
-        renderQuestion();
+        nextActivity();
     }
 
-    function renderQuestion() {
-        const data = gameData[state.level];
-        // Access specific difficulty array
-        const qList = data.questions[state.difficulty];
-        const q = qList[state.qIndex];
-
-        // Progress
-        const percent = (state.qIndex / qList.length) * 100;
-        document.getElementById('progress-fill').style.width = percent + "%";
-
-        document.getElementById('question-text').innerText = q.q;
-
-        const container = document.getElementById('options-container');
+    function nextActivity() {
+        const lvl = levelsData[gameState.currentLevel];
+        if(gameState.currentActivity >= lvl.activities.length) { endLevel(); return; }
+        const activity = lvl.activities[gameState.currentActivity];
+        const container = document.getElementById('game-content');
+        const desc = document.getElementById('activity-desc');
         container.innerHTML = "";
+        document.getElementById('level-topic').innerText = lvl.title;
+        document.getElementById('lvl-num').innerText = gameState.currentLevel;
+        document.getElementById('progress-fill').style.width = `${(gameState.currentActivity / lvl.activities.length) * 100}%`;
 
-        q.options.forEach((opt, index) => {
+        if(activity.type === "memory") renderMemory(activity.pairs);
+        else if(activity.type === "hangman") renderHangman(activity.word, activity.hint);
+        else if(activity.type === "select") renderSelect(activity);
+        else if(activity.type === "connect") renderConnect(activity.pairs, activity.rightOptions);
+    }
+
+    function renderHangman(word, hint) {
+        const container = document.getElementById('game-content');
+        const hintDiv = document.createElement('div');
+        hintDiv.className = 'hangman-hint';
+        hintDiv.innerHTML = `<strong>Pista:</strong> ${hint}`;
+        container.appendChild(hintDiv);
+        let guessed = [];
+        const wordDiv = document.createElement('div');
+        wordDiv.className = 'hangman-word';
+        const updateWord = () => {
+            wordDiv.innerText = word.split('').map(l => guessed.includes(l) ? l : "_").join("");
+            if(!wordDiv.innerText.includes("_")) successStep();
+        };
+        const alphabetDiv = document.createElement('div');
+        alphabetDiv.className = 'alphabet';
+        "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ".split("").forEach(l => {
             const btn = document.createElement('button');
-            btn.className = 'option-btn';
-            btn.innerText = opt;
-            btn.onclick = () => handleAnswer(index, btn, qList.length);
+            btn.innerText = l;
+            btn.onclick = () => {
+                btn.disabled = true;
+                if(word.includes(l)) { guessed.push(l); updateWord(); }
+                else handleError();
+            };
+            alphabetDiv.appendChild(btn);
+        });
+        container.appendChild(wordDiv);
+        container.appendChild(alphabetDiv);
+        updateWord();
+    }
+
+    function renderMemory(pairs) {
+        const container = document.getElementById('game-content');
+        const grid = document.createElement('div');
+        grid.className = 'grid-memory';
+        let deck = [...pairs].sort(() => Math.random() - 0.5);
+        let flipped = [];
+        deck.forEach((item) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerText = "❔";
+            card.dataset.target = item.target;
+            card.onclick = () => {
+                if(flipped.length < 2 && !card.classList.contains('flipped') && !card.classList.contains('matched')) {
+                    card.innerText = item.text;
+                    card.classList.add('flipped');
+                    flipped.push(card);
+                    if(flipped.length === 2) {
+                        if(flipped[0].dataset.target === flipped[1].dataset.target) {
+                            flipped.forEach(c => { c.classList.add('matched'); c.classList.remove('flipped'); });
+                            flipped = [];
+                            gameState.score += 100;
+                            if(document.querySelectorAll('.card.matched').length === deck.length) setTimeout(successStep, 800);
+                        } else {
+                            setTimeout(() => { flipped.forEach(c => { c.innerText = "❔"; c.classList.remove('flipped'); }); flipped = []; handleError(); }, 1000);
+                        }
+                    }
+                }
+            };
+            grid.appendChild(card);
+        });
+        container.appendChild(grid);
+    }
+
+    function renderConnect(pairs, rightOptions) {
+        const container = document.getElementById('game-content');
+        const wrapper = document.createElement('div');
+        wrapper.className = 'matching-container';
+        const canvas = document.createElement('canvas');
+        canvas.id = 'line-canvas';
+        wrapper.appendChild(canvas);
+        const colA = document.createElement('div'); colA.className = 'match-column';
+        const colB = document.createElement('div'); colB.className = 'match-column';
+        const itemsA = pairs.map(p => ({txt: p.a, target: p.target})).sort(() => Math.random() - 0.5);
+        const itemsB = rightOptions.map(opt => ({txt: opt})).sort(() => Math.random() - 0.5);
+        itemsA.forEach(item => {
+            const div = document.createElement('div'); div.className = 'match-item'; div.innerText = item.txt; div.dataset.target = item.target; div.onclick = () => handleMatchSelect(div, 'A'); colA.appendChild(div);
+        });
+        itemsB.forEach(item => {
+            const div = document.createElement('div'); div.className = 'match-item'; div.innerText = item.txt; div.dataset.value = item.txt; div.onclick = () => handleMatchSelect(div, 'B'); colB.appendChild(div);
+        });
+        wrapper.appendChild(colA); wrapper.appendChild(colB); container.appendChild(wrapper);
+        setTimeout(() => { canvas.width = wrapper.offsetWidth; canvas.height = wrapper.offsetHeight; }, 100);
+    }
+
+    function handleMatchSelect(el, side) {
+        if(el.classList.contains('correct')) return;
+        if(gameState.selectedMatch && gameState.selectedMatch.side === side) gameState.selectedMatch.el.classList.remove('selected');
+        el.classList.add('selected');
+        if(!gameState.selectedMatch) gameState.selectedMatch = {el, side};
+        else {
+            if(gameState.selectedMatch.side !== side) {
+                const nodeA = side === 'A' ? el : gameState.selectedMatch.el;
+                const nodeB = side === 'B' ? el : gameState.selectedMatch.el;
+                if(nodeA.dataset.target === nodeB.dataset.value) {
+                    nodeA.classList.add('correct'); nodeB.classList.add('correct'); drawConnectLine(nodeA, nodeB); gameState.score += 150;
+                    if(document.querySelectorAll('.match-item.correct').length === 8) setTimeout(successStep, 1000);
+                } else {
+                    handleError(); nodeA.classList.remove('selected'); nodeB.classList.remove('selected');
+                }
+                gameState.selectedMatch = null;
+            } else { gameState.selectedMatch = {el, side}; }
+        }
+    }
+
+    function drawConnectLine(el1, el2) {
+        const canvas = document.getElementById('line-canvas');
+        if(!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const rect = canvas.getBoundingClientRect();
+        const b1 = el1.getBoundingClientRect();
+        const b2 = el2.getBoundingClientRect();
+        ctx.beginPath();
+        ctx.moveTo(b1.right - rect.left, b1.top + b1.height/2 - rect.top);
+        ctx.lineTo(b2.left - rect.left, b2.top + b2.height/2 - rect.top);
+        ctx.strokeStyle = '#10b981'; ctx.lineWidth = 3; ctx.stroke();
+    }
+
+    function renderSelect(data) {
+        const container = document.getElementById('game-content');
+        const q = document.createElement('h3'); q.innerText = data.q; container.appendChild(q);
+        data.options.forEach((opt, i) => {
+            const btn = document.createElement('button'); btn.innerText = opt; btn.style.width = "100%";
+            btn.onclick = () => { if(i === data.correct) successStep(); else { btn.disabled = true; btn.style.background = "var(--danger)"; handleError(); } };
             container.appendChild(btn);
         });
     }
 
-    function handleAnswer(selectedIndex, btn, totalQ) {
-        const data = gameData[state.level];
-        const qList = data.questions[state.difficulty];
-        const currentQ = qList[state.qIndex];
-        const allBtns = document.querySelectorAll('.option-btn');
-
-        // Disable clicks
-        allBtns.forEach(b => b.disabled = true);
-
-        if (selectedIndex === currentQ.correct) {
-            btn.classList.add('correct');
-            state.score += Math.round(100 * state.multiplier);
-            setTimeout(() => nextQ(totalQ), 1000);
-        } else {
-            btn.classList.add('wrong');
-            // Show correct one
-            allBtns[currentQ.correct].classList.add('correct');
-            state.lives--;
-            
-            // Log mistake unique to topic
-            if(!state.mistakes.includes(data.topic)) {
-                state.mistakes.push(data.topic);
-            }
-
-            updateStats();
-
-            if (state.lives <= 0) {
-                setTimeout(gameOver, 1500);
-            } else {
-                setTimeout(() => nextQ(totalQ), 1500);
-            }
+    function handleError() {
+        gameState.lives--;
+        updateHUD();
+        if(gameState.lives <= 0) { 
+            updateRankingTable();
+            alert("⚠️ Vidas agotadas. Reiniciando nivel..."); 
+            startLevel(gameState.currentLevel); 
         }
     }
 
-    function nextQ(total) {
-        state.qIndex++;
-        if (state.qIndex < total) {
-            renderQuestion();
-        } else {
-            endLevel();
-        }
+    function successStep() {
+        gameState.score += 200;
+        gameState.currentActivity++;
+        updateHUD();
+        nextActivity();
+    }
+
+    function updateHUD() {
+        document.getElementById('lives').innerText = gameState.lives;
+        document.getElementById('score').innerText = gameState.score;
+    }
+
+    function updateRankingTable() {
+        const finalLvlScore = gameState.score + (gameState.lives * 100);
+        gameState.rankingHistory.push({
+            lvl: gameState.currentLevel,
+            diff: gameState.difficulty,
+            time: gameState.lvlTime,
+            lives: gameState.lives,
+            score: finalLvlScore
+        });
+        const tbody = document.getElementById('ranking-body');
+        tbody.innerHTML = "";
+        gameState.rankingHistory.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${row.lvl}</td><td>${row.diff}</td><td>${row.time}s</td><td>${row.lives}</td><td style="font-weight:bold; color:var(--primary)">${row.score}</td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function showFinalLeaderboard() {
+        const container = document.getElementById('final-leaderboard-container');
+        const body = document.getElementById('leaderboard-body');
+        container.style.display = "block";
+        document.getElementById('btn-next-lvl').style.display = "none";
+        
+        let totalScore = 0;
+        gameState.rankingHistory.forEach(item => totalScore += item.score);
+        let average = totalScore / 5;
+        let percentage = Math.min(100, (average / 1500) * 100).toFixed(2);
+
+        body.innerHTML = `
+            <tr>
+                <td style="font-weight:800">${gameState.playerName}</td>
+                <td>${gameState.difficulty}</td>
+                <td style="color:var(--success); font-weight:800">${percentage}%</td>
+            </tr>
+        `;
+
+        saveToHistoricalRanking(); // GUARDAR AL HISTORIAL
+
+        const restartBtn = document.createElement('button');
+        restartBtn.innerText = "VOLVER AL INICIO 🏠";
+        restartBtn.style.width = "100%";
+        restartBtn.style.marginTop = "15px";
+        restartBtn.onclick = () => location.reload();
+        container.appendChild(restartBtn);
     }
 
     function endLevel() {
-        clearInterval(state.timer);
+        clearInterval(gameState.timerInterval);
+        confetti();
+        const finalLvlScore = gameState.score + (gameState.lives * 100);
+        document.getElementById('rank-title').innerText = "¡Nivel " + gameState.currentLevel + " Completado!";
+        document.getElementById('rank-time').innerText = gameState.lvlTime;
+        document.getElementById('rank-lives').innerText = gameState.lives;
+        document.getElementById('rank-score').innerText = finalLvlScore;
+        document.getElementById('rank-grade').innerText = finalLvlScore > 1000 ? "🏆 S - Experto" : "A - Investigador";
         
-        // Calc Rank
-        const scoreBase = 500;
-        const timePenalty = state.time * 5;
-        const lifeBonus = state.lives * 50;
-        const totalPerf = scoreBase - timePenalty + lifeBonus;
+        updateRankingTable();
+        showScreen('screen-rank');
 
-        let rank = "B";
-        let msg = "Bien hecho.";
-        
-        if (totalPerf > 600) { rank = "S+"; msg = "¡Nivel Legendario!"; }
-        else if (totalPerf > 500) { rank = "A"; msg = "Excelente Dominio."; }
-        else if (totalPerf < 300) { rank = "C"; msg = "Puedes mejorar el tiempo."; }
-
-        document.getElementById('end-time').innerText = state.time;
-        document.getElementById('end-lives').innerText = state.lives;
-        document.getElementById('rank-badge').innerText = `RANGO ${rank}`;
-        document.getElementById('rank-msg').innerText = msg;
-
-        showScreen('levelEnd');
-    }
-
-    function nextLevel() {
-        loadLevel(state.level + 1);
-    }
-
-    function gameOver() {
-        clearInterval(state.timer);
-        document.getElementById('final-score').innerText = state.score;
-        showFeedback('feedback-list-fail', 'feedback-area-fail');
-        showScreen('gameOver');
-    }
-
-    function finishGame() {
-        clearInterval(state.timer);
-        document.getElementById('victory-score').innerText = state.score;
-        
-        let msg = "¡Has demostrado gran capacidad investigativa!";
-        if(state.difficulty === 'hard') msg = "¡NIVEL EXPERTO! Estás listo para sustentar.";
-        
-        document.getElementById('victory-rank-msg').innerText = msg;
-        showFeedback('feedback-list-win', 'feedback-area-win');
-        showScreen('victory');
-    }
-
-    function showFeedback(listId, boxId) {
-        const list = document.getElementById(listId);
-        const box = document.getElementById(boxId);
-        list.innerHTML = "";
-
-        if (state.mistakes.length === 0) {
-            box.style.display = "none";
-        } else {
-            box.style.display = "block";
-            state.mistakes.forEach(topic => {
-                const li = document.createElement('li');
-                li.innerText = topic;
-                list.appendChild(li);
-            });
+        if(gameState.currentLevel === 5) {
+            showFinalLeaderboard();
         }
     }
 
-    function restartGame() {
-        location.reload();
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
     }
 
-    function updateStats() {
-        const hearts = "❤".repeat(state.lives);
-        const empty = "♡".repeat(5 - state.lives);
-        document.querySelector('.lives').innerHTML = hearts + empty;
-        document.getElementById('score').innerText = state.score;
-    }
-
-    // Indicate system ready
-    console.log("Sistema Tesis V3 Cargado Correctamente");
+    // Inicializar tabla histórica al cargar
+    window.onload = loadHistoricalRanking;
 </script>
-
 </body>
 </html>
