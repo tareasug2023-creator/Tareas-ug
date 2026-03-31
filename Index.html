@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prestamos CC - Versión Final</title>
+    <style>
+        :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 20px; color: #1e293b; }
+        .container { max-width: 1300px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header-box { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 20px; }
+        .capital-section { background: #1e293b; color: white; padding: 15px; border-radius: 8px; text-align: center; }
+        .capital-section input { background: transparent; color: #22c55e; border: none; font-size: 1.2em; font-weight: bold; width: 120px; text-align: center; outline: none; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; background: #f1f5f9; padding: 20px; border-radius: 8px; }
+        input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; width: 90%; }
+        button { padding: 10px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 12px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+        .payment-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; max-width: 600px; scrollbar-width: thin; align-items: center; }
+        .circle-box { min-width: 55px; text-align: center; }
+        .circle { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; cursor: pointer; margin: auto; transition: 0.2s; font-size: 14px; background: white; user-select: none; }
+        .circle.checked { background: var(--success); border-color: var(--success); color: white; }
+        .circle.checked::after { content: '✓'; }
+        .circle.x-mark { background: var(--danger); border-color: var(--danger); color: white; }
+        .circle.x-mark::after { content: '✕'; }
+        .circle.add-week { border: 2px dashed var(--primary); color: var(--primary); font-weight: bold; font-size: 18px; }
+        .circle.extra-fee { border-color: #f59e0b; color: #b45309; border-width: 3px; } 
+        .date-label { font-size: 10px; color: #64748b; display: block; margin-top: 4px; font-weight: bold; }
+        .client-phone { font-size: 12px; color: #2563eb; text-decoration: none; display: block; margin-top: 3px; font-weight: 500; }
+        .fee-badge { font-size: 9px; background: #fff7ed; color: #c2410c; padding: 1px 3px; border-radius: 4px; border: 1px solid #fdba74; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-box">
+        <h2>💲 Prestamos CC</h2>
+        <div class="capital-section">
+            CAPITAL DISPONIBLE<br>
+            $ <input type="number" id="capitalGlobal" step="0.01" onchange="actualizarCapitalManual()">
+        </div>
+    </div>
+
+    <div class="form-grid">
+        <input type="text" id="nombre" placeholder="Nombre">
+        <input type="text" id="celular" placeholder="Celular" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)">
+        <input type="number" id="monto" placeholder="Monto $">
+        <input type="number" id="porcentaje" placeholder="Interés %">
+        <input type="number" id="semanas" placeholder="Semanas" min="1">
+        <input type="date" id="fechaInicio">
+        <button onclick="agregarPrestamo()">Registrar</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Resumen Deuda</th>
+                <th>Pagos (Círculo naranja = Multa $5)</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody id="cuerpoTabla"></tbody>
+    </table>
+</div>
+
+<script>
+    const CONTRASENA_ADMIN = "Suki24"; 
+
+    // Inicialización segura de datos
+    let capitalTotal = parseFloat(localStorage.getItem('cap_ahorro')) || 0;
+    let prestamos = JSON.parse(localStorage.getItem('lista_prestamos')) || [];
+
+    window.onload = () => {
+        document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
+        renderizarTabla();
+    };
+
+    function actualizarCapitalManual() {
+        capitalTotal = parseFloat(document.getElementById('capitalGlobal').value) || 0;
+        guardar();
+    }
+
+    function agregarPrestamo() {
+        const nom = document.getElementById('nombre').value;
+        const cel = document.getElementById('celular').value;
+        const mon = parseFloat(document.getElementById('monto').value);
+        const por = parseFloat(document.getElementById('porcentaje').value) || 0;
+        const sem = parseInt(document.getElementById('semanas').value);
+        const fec = document.getElementById('fechaInicio').value;
+
+        if (!nom || isNaN(mon) || !fec || isNaN(sem) || sem < 1) {
+            alert("Por favor completa todos los campos correctamente.");
+            return;
+        }
+
+        const totalConInteres = mon + (mon * (por / 100));
+        const cuotaBase = totalConInteres / sem;
+
+        const nuevo = {
+            id: Date.now(),
+            nombre: nom,
+            celular: cel,
+            montoEntregado: mon,
+            totalCobrar: totalConInteres,
+            valorCuotaOriginal: cuotaBase,
+            fechaInicio: fec,
+            pagos: Array.from({length: sem}, () => ({ tipo: 'normal', estado: 0, valor: cuotaBase }))
+        };
+
+        capitalTotal -= mon;
+        prestamos.push(nuevo);
+        guardar();
+        renderizarTabla();
+
+        // Limpiar campos
+        ["nombre", "celular", "monto", "porcentaje", "semanas"].forEach(id => document.getElementById(id).value = "");
+    }
+
+    function togglePago(pId, index) {
+        const p = prestamos.find(x => x.id === pId);
+        const pago = p.pagos[index];
+        const estadoAnterior = pago.estado;
+        
+        pago.estado = (pago.estado + 1) % 3;
+
+        if (pago.estado === 1) capitalTotal += pago.valor;
+        else if (estadoAnterior === 1) capitalTotal -= pago.valor;
+
+        guardar();
+        renderizarTabla();
+    }
+
+    function agregarSemana(pId) {
+        const pass = prompt("Contraseña para agregar Multa Extra de $5.00:");
+        if (pass === CONTRASENA_ADMIN) {
+            const p = prestamos.find(x => x.id === pId);
+            p.totalCobrar += 5;
+            p.pagos.push({ tipo: 'extra', estado: 0, valor: 5 });
+            guardar();
+            renderizarTabla();
+        } else if (pass !== null) {
+            alert("Contraseña incorrecta.");
+        }
+    }
+
+    function eliminar(pId) {
+        const pass = prompt("Contraseña para eliminar:");
+        if (pass === CONTRASENA_ADMIN) {
+            prestamos = prestamos.filter(x => x.id !== pId);
+            guardar();
+            renderizarTabla();
+        } else if (pass !== null) alert("Incorrecta.");
+    }
+
+    function guardar() {
+        localStorage.setItem('cap_ahorro', capitalTotal);
+        localStorage.setItem('lista_prestamos', JSON.stringify(prestamos));
+        document.getElementById('capitalGlobal').value = capitalTotal.toFixed(2);
+    }
+
+    function renderizarTabla() {
+        const tbody = document.getElementById('cuerpoTabla');
+        tbody.innerHTML = "";
+
+        prestamos.forEach(p => {
+            const tr = document.createElement('tr');
+            let circulosHtml = '<div class="payment-scroll">';
+            let fBase = new Date(p.fechaInicio + "T00:00:00");
+            
+            // Validar si pagos existe (por si hay basura de versiones anteriores)
+            if (!Array.isArray(p.pagos)) return; 
+
+            p.pagos.forEach((pago, i) => {
+                fBase.setDate(fBase.getDate() + 7);
+                const displayF = fBase.toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit'});
+                let clase = pago.estado === 1 ? "checked" : (pago.estado === 2 ? "x-mark" : "");
+                let extraClase = pago.tipo === 'extra' ? 'extra-fee' : '';
+                let badgeMulta = pago.tipo === 'extra' ? '<br><span class="fee-badge">Multa $5</span>' : '';
+
+                circulosHtml += `
+                    <div class="circle-box">
+                        <div class="circle ${clase} ${extraClase}" onclick="togglePago(${p.id}, ${i})"></div>
+                        <span class="date-label">${displayF}${badgeMulta}</span>
+                    </div>`;
+            });
+
+            // Botón "+" para retrasos
+            circulosHtml += `
+                <div class="circle-box">
+                    <div class="circle add-week" onclick="agregarSemana(${p.id})">+</div>
+                    <span class="date-label">Retraso</span>
+                </div></div>`;
+
+            tr.innerHTML = `
+                <td>
+                    <strong>${p.nombre}</strong>
+                    <a href="https://wa.me/593${p.celular}" target="_blank" class="client-phone">📱 ${p.celular}</a>
+                </td>
+                <td>
+                    <small>Cuota: $${p.valorCuotaOriginal.toFixed(2)}</small><br>
+                    <strong>Total:$${p.totalCobrar.toFixed(2)}</strong>
+                </td>
+                <td>${circulosHtml}</td>
+                <td><button onclick="eliminar(${p.id})" style="background:none; color:red; font-size:11px; text-decoration:underline; border:none; cursor:pointer">Borrar</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+</script>
+
+</body>
+</html>
